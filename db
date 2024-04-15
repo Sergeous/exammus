@@ -1,0 +1,123 @@
+-- Создание схемы и таблиц
+CREATE SCHEMA IF NOT EXISTS mytabs;
+
+-- Таблица для книг
+CREATE TABLE IF NOT EXISTS mytabs.books (
+    id SERIAL PRIMARY KEY,
+    title VARCHAR(255),
+    author_id INT REFERENCES mytabs.authors(id),
+    edition_id INT REFERENCES mytabs.editions(id)
+);
+
+-- Таблица для авторов
+CREATE TABLE IF NOT EXISTS mytabs.authors (
+    id SERIAL PRIMARY KEY,
+    first_name VARCHAR(255),
+    last_name VARCHAR(255),
+    birth_year INT
+);
+
+-- Таблица для изданий
+CREATE TABLE IF NOT EXISTS mytabs.editions (
+    id SERIAL PRIMARY KEY,
+    publisher VARCHAR(255),
+    edition_number INT,
+    publication_year INT,
+    page_count INT,
+    price DECIMAL(10, 2),
+    author_fee DECIMAL(10, 2)
+);
+
+-- Заполнение таблиц данными
+INSERT INTO mytabs.authors (first_name, last_name, birth_year) VALUES
+    ('Александр', 'Пушкин', 1799),
+    ('Лев', 'Толстой', 1828),
+    ('Федор', 'Достоевский', 1821),
+    ('Антон', 'Чехов', 1860),
+    ('Николай', 'Гоголь', 1809);
+
+INSERT INTO mytabs.editions (publisher, edition_number, publication_year, page_count, price, author_fee) VALUES
+    ('Издательство 1', 1, 2000, 300, 15.99, 2.50),
+    ('Издательство 2', 1, 1995, 400, 20.50, 3.00),
+    ('Издательство 3', 1, 1980, 250, 12.99, 2.00),
+    ('Издательство 1', 2, 2005, 350, 18.75, 3.50),
+    ('Издательство 2', 2, 1998, 500, 22.99, 3.25),
+    ('Издательство 4', 1, 1990, 320, 16.50, 2.75),
+    ('Издательство 3', 2, 1975, 280, 14.99, 2.25);
+
+INSERT INTO mytabs.books (title, author_id, edition_id) VALUES
+    ('Евгений Онегин', 1, 1),
+    ('Война и мир', 2, 2),
+    ('Преступление и наказание', 3, 3),
+    ('Три сестры', 4, 4),
+    ('Мертвые души', 5, 5),
+    ('Анна Каренина', 2, 6),
+    ('Бесы', 3, 7);
+
+-- Создание схемы и представлений
+CREATE SCHEMA IF NOT EXISTS myviews;
+
+-- Представление для поиска книги с минимальной ценой
+CREATE MATERIALIZED VIEW IF NOT EXISTS myviews.view1 AS
+SELECT
+    b.title,
+    e.price
+FROM
+    mytabs.books b
+JOIN
+    mytabs.editions e ON b.edition_id = e.id
+ORDER BY
+    e.price ASC
+LIMIT 1;
+
+-- Представление для поиска всех книг изданных в одном издательстве
+CREATE MATERIALIZED VIEW IF NOT EXISTS myviews.view2 AS
+SELECT
+    b.title,
+    e.publisher
+FROM
+    mytabs.books b
+JOIN
+    mytabs.editions e ON b.edition_id = e.id
+GROUP BY
+    b.title, e.publisher
+HAVING
+    COUNT(DISTINCT e.publisher) = 1;
+
+-- Представление для поиска всех авторов, у которых книги издавались только один раз
+CREATE MATERIALIZED VIEW IF NOT EXISTS myviews.view3 AS
+SELECT
+    a.first_name,
+    a.last_name
+FROM
+    mytabs.authors a
+JOIN
+    mytabs.books b ON a.id = b.author_id
+GROUP BY
+    a.first_name, a.last_name
+HAVING
+    COUNT(DISTINCT b.edition_id) = 1;
+
+-- Представление для поиска всех книг указанного автора, у которых число страниц больше заданной величины
+CREATE MATERIALIZED VIEW IF NOT EXISTS myviews.view4 AS
+SELECT
+    b.title,
+    e.page_count
+FROM
+    mytabs.books b
+JOIN
+    mytabs.editions e ON b.edition_id = e.id
+JOIN
+    mytabs.authors a ON b.author_id = a.id
+WHERE
+    a.first_name = 'Указанное имя автора'
+    AND e.page_count  заданное_число_страниц;
+
+-- Представление для поиска всех издательств, выпускавших книги до заданного года
+CREATE MATERIALIZED VIEW IF NOT EXISTS myviews.view5 AS
+SELECT DISTINCT
+    publisher
+FROM
+    mytabs.editions
+WHERE
+    publication_year  заданный_год;
